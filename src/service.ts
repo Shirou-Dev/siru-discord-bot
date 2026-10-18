@@ -4,6 +4,7 @@ import {
   ButtonStyle,
   Client,
   ContainerBuilder,
+  Message,
   MessageFlags,
   SeparatorBuilder,
   SeparatorSpacingSize,
@@ -222,6 +223,42 @@ async function fetchTextChannel(client: Client, id: string): Promise<TextChannel
   return null;
 }
 
+/**
+ * Auto-discovers an existing message posted by this bot matching a keyword,
+ * first searching pinned messages, then searching recent channel messages.
+ */
+export async function findExistingBotMessage(
+  channel: TextChannel,
+  keyword: string
+): Promise<Message | null> {
+  const botId = channel.client.user?.id;
+  if (!botId) return null;
+
+  try {
+    // 1. Check pinned messages first (all panels are pinned)
+    const pinned = await channel.messages.fetchPinned();
+    const foundPin = pinned.find(
+      (m) =>
+        m.author.id === botId &&
+        (m.content?.includes(keyword) || JSON.stringify(m.components).includes(keyword))
+    );
+    if (foundPin) return foundPin;
+
+    // 2. Fallback: check recent 25 messages in channel
+    const recent = await channel.messages.fetch({ limit: 25 });
+    const foundRecent = recent.find(
+      (m) =>
+        m.author.id === botId &&
+        (m.content?.includes(keyword) || JSON.stringify(m.components).includes(keyword))
+    );
+    if (foundRecent) return foundRecent;
+  } catch (err) {
+    console.warn(`[findExistingBotMessage] failed for keyword "${keyword}":`, (err as Error).message);
+  }
+
+  return null;
+}
+
 export async function renderServicePanel(client: Client): Promise<void> {
   if (!config.service.enabled) return;
 
@@ -249,7 +286,15 @@ export async function renderServicePanel(client: Client): Promise<void> {
     },
     clusterHealth
   );
-  const existingId = getServiceMessageId();
+  let existingId = getServiceMessageId();
+  if (!existingId) {
+    const existingMsg = await findExistingBotMessage(channel, "SIRU-SKIN");
+    if (existingMsg) {
+      existingId = existingMsg.id;
+      setServiceMessageId(existingId);
+    }
+  }
+
   if (existingId) {
     try {
       const msg = await channel.messages.fetch(existingId);
@@ -355,7 +400,15 @@ export async function renderFiguraPanel(client: Client): Promise<void> {
   ]);
 
   const container = buildFiguraContainer(stats, version, parseUptimeFromMotd(motd), health);
-  const existingId = getFiguraMessageId();
+  let existingId = getFiguraMessageId();
+  if (!existingId) {
+    const existingMsg = await findExistingBotMessage(channel, "SIRU-FiguraCloud");
+    if (existingMsg) {
+      existingId = existingMsg.id;
+      setFiguraMessageId(existingId);
+    }
+  }
+
   if (existingId) {
     try {
       const msg = await channel.messages.fetch(existingId);
@@ -559,7 +612,15 @@ export async function renderNodeStatusPanel(client: Client): Promise<void> {
   const cluster = await getClusterNodesStatus();
   const container = buildNodeStatusContainer(cluster.active, cluster.node1, cluster.node2, cluster.lastSync);
 
-  const existingId = getNodeStatusMessageId();
+  let existingId = getNodeStatusMessageId();
+  if (!existingId) {
+    const existingMsg = await findExistingBotMessage(channel, "SIRU-Network");
+    if (existingMsg) {
+      existingId = existingMsg.id;
+      setNodeStatusMessageId(existingId);
+    }
+  }
+
   if (existingId) {
     try {
       const msg = await channel.messages.fetch(existingId);
@@ -853,7 +914,15 @@ export async function renderCloudflarePanel(client: Client): Promise<void> {
       .setURL("https://www.cloudflarestatus.com")
   );
 
-  const existingId = getCloudflareMessageId();
+  let existingId = getCloudflareMessageId();
+  if (!existingId) {
+    const existingMsg = await findExistingBotMessage(channel, "Cloudflare");
+    if (existingMsg) {
+      existingId = existingMsg.id;
+      setCloudflareMessageId(existingId);
+    }
+  }
+
   if (existingId) {
     try {
       const msg = await channel.messages.fetch(existingId);

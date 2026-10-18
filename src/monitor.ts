@@ -17,7 +17,7 @@ import {
   setServerState,
   ServerState,
 } from "./store.js";
-import { renderCloudflarePanel, renderFiguraPanel, renderNodeStatusPanel, renderServicePanel } from "./service.js";
+import { findExistingBotMessage, renderCloudflarePanel, renderFiguraPanel, renderNodeStatusPanel, renderServicePanel } from "./service.js";
 
 const DAY_MS = 86_400_000;
 
@@ -179,7 +179,15 @@ async function fetchTextChannel(client: Client, id: string, label: string): Prom
 }
 
 async function renderDashboard(channel: TextChannel, container: ContainerBuilder): Promise<void> {
-  const existingId = getDashboardMessageId();
+  let existingId = getDashboardMessageId();
+  if (!existingId) {
+    const existingMsg = await findExistingBotMessage(channel, "สถานะเซิร์ฟเวอร์");
+    if (existingMsg) {
+      existingId = existingMsg.id;
+      setDashboardMessageId(existingId);
+    }
+  }
+
   if (existingId) {
     try {
       const msg = await channel.messages.fetch(existingId);
