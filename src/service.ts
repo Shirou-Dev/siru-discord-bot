@@ -145,7 +145,7 @@ function buildServiceContainer(
   container.addSeparatorComponents(sepLarge(true));
   text(`### สถานะรวม\n${overall}`);
 
-  const nodeName = clusterHealth?.node_name || (clusterHealth?.node_role === "standby" ? "Node 2 (Standby)" : "Node 1 (Primary)");
+  const nodeName = clusterHealth?.node_name || (clusterHealth?.node_role === "standby" ? "Node 2 (Cloud VPS)" : "Node 1 (Local Server)");
   const nodeRegion = clusterHealth?.node_region || (clusterHealth?.node_role === "standby" ? "TH-Central" : "TH-South");
   const nodeRoleIcon = clusterHealth?.node_role === "standby" ? "🟡" : "🟢";
 
@@ -293,7 +293,7 @@ function buildFiguraContainer(
   container.addSeparatorComponents(sepLarge(true));
   text(`### สถานะรวม\n${overall}`);
 
-  const nodeName = health?.node_name || (health?.node_role === "standby" ? "Node 2 (Standby)" : "Node 1 (Primary)");
+  const nodeName = health?.node_name || (health?.node_role === "standby" ? "Node 2 (Cloud VPS)" : "Node 1 (Local Server)");
   const nodeRegion = health?.node_region || (health?.node_role === "standby" ? "TH-Central" : "TH-South");
   const nodeRoleIcon = health?.node_role === "standby" ? "🟡" : "🟢";
 
@@ -510,12 +510,12 @@ export function buildNodeStatusContainer(
   const n2Ping = node2.online ? `  ·  \`${node2.pingMs}ms\`` : "";
 
   const n1Line = node1.online
-    ? `🟢 **Node 1 (Primary)**  ·  \`TH-South\`${n1Up}${n1Ping}  ·  ${n1Tag}`
-    : `🔴 **Node 1 (Primary)**  ·  \`TH-South\`  ·  \`Offline\``;
+    ? `🟢 **Node 1 (Local Server)**  ·  \`TH-South\`${n1Up}${n1Ping}  ·  ${n1Tag}`
+    : `🔴 **Node 1 (Local Server)**  ·  \`TH-South\`  ·  \`Offline\``;
 
   const n2Line = node2.online
-    ? `🟢 **Node 2 (Standby)**  ·  \`TH-Central\`${n2Up}${n2Ping}  ·  ${n2Tag}`
-    : `🔴 **Node 2 (Standby)**  ·  \`TH-Central\`  ·  \`Offline\``;
+    ? `🟢 **Node 2 (Cloud VPS)**  ·  \`TH-Central\`${n2Up}${n2Ping}  ·  ${n2Tag}`
+    : `🔴 **Node 2 (Cloud VPS)**  ·  \`TH-Central\`  ·  \`Offline\``;
 
   container.addSeparatorComponents(sepSmall());
   text([n1Line, n2Line].join("\n"));
