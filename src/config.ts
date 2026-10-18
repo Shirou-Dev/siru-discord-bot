@@ -41,7 +41,7 @@ export const config = {
     sponsorRoleId: required("SPONSOR_ROLE_ID"),
     adminRoleId: required("ADMIN_ROLE_ID"),
   },
-  databaseUrl: required("DATABASE_URL"),
+  databaseUrl: process.env.DATABASE_URL || "",
   monitor: {
     offlineAfterMinutes: num("OFFLINE_AFTER_MINUTES", 6),
     expiryWarnDays: csvNums("EXPIRY_WARN_DAYS", [3, 1]),

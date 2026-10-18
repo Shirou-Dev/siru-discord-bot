@@ -488,12 +488,15 @@ export function buildNodeStatusContainer(
   const n1Up = node1.online && node1.uptime ? `  ·  \`${cleanUptime(node1.uptime)}\`` : "";
   const n2Up = node2.online && node2.uptime ? `  ·  \`${cleanUptime(node2.uptime)}\`` : "";
 
+  const n1Ping = node1.online ? `  ·  \`${node1.pingMs}ms\`` : "";
+  const n2Ping = node2.online ? `  ·  \`${node2.pingMs}ms\`` : "";
+
   const n1Line = node1.online
-    ? `🟢 **Node 1 (Primary)**  ·  \`TH-South\`${n1Up}  ·  ${n1Tag}`
+    ? `🟢 **Node 1 (Primary)**  ·  \`TH-South\`${n1Up}${n1Ping}  ·  ${n1Tag}`
     : `🔴 **Node 1 (Primary)**  ·  \`TH-South\`  ·  \`Offline\``;
 
   const n2Line = node2.online
-    ? `🟢 **Node 2 (Standby)**  ·  \`TH-Central\`${n2Up}  ·  ${n2Tag}`
+    ? `🟢 **Node 2 (Standby)**  ·  \`TH-Central\`${n2Up}${n2Ping}  ·  ${n2Tag}`
     : `🔴 **Node 2 (Standby)**  ·  \`TH-Central\`  ·  \`Offline\``;
 
   container.addSeparatorComponents(sepSmall());

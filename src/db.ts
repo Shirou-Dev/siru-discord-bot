@@ -11,11 +11,13 @@ types.setTypeParser(1114, (str) => new Date(str.replace(" ", "T") + "Z"));
 
 // Pool ต่อ Postgres ตัวเดียวกับ backend SIRU-SKIN
 // อ่านเป็นหลัก เขียนเฉพาะตอนอนุมัติ sponsor (updateServerSponsor)
-const pool = new Pool({ connectionString: config.databaseUrl, max: 5 });
+const pool = config.databaseUrl ? new Pool({ connectionString: config.databaseUrl, max: 5 }) : null;
 
-pool.on("error", (err) => {
-  console.error("[db] unexpected pool error:", err.message);
-});
+if (pool) {
+  pool.on("error", (err) => {
+    console.error("[db] unexpected pool error:", err.message);
+  });
+}
 
 export interface ServerRow {
   id: string;
@@ -39,40 +41,64 @@ const SERVER_COLUMNS = `
 
 /** ดึง server ทั้งหมด (ใช้ใน monitoring loop) */
 export async function getAllServers(): Promise<ServerRow[]> {
-  const { rows } = await pool.query<ServerRow>(`SELECT ${SERVER_COLUMNS} FROM "Server"`);
-  return rows;
+  if (!pool) return [];
+  try {
+    const { rows } = await pool.query<ServerRow>(`SELECT ${SERVER_COLUMNS} FROM "Server"`);
+    return rows;
+  } catch (err) {
+    console.error("[db] getAllServers error:", (err as Error).message);
+    return [];
+  }
 }
 
 /** หา server จาก id ตรงตัว หรือชื่อ (case-insensitive) — ชื่อซ้ำได้ จึงคืนเป็น array */
 export async function findServers(query: string): Promise<ServerRow[]> {
-  const { rows } = await pool.query<ServerRow>(
-    `SELECT ${SERVER_COLUMNS} FROM "Server"
-     WHERE id = $1 OR LOWER(name) = LOWER($1)
-     ORDER BY "createdAt" DESC`,
-    [query]
-  );
-  return rows;
+  if (!pool) return [];
+  try {
+    const { rows } = await pool.query<ServerRow>(
+      `SELECT ${SERVER_COLUMNS} FROM "Server"
+       WHERE id = $1 OR LOWER(name) = LOWER($1)
+       ORDER BY "createdAt" DESC`,
+      [query]
+    );
+    return rows;
+  } catch (err) {
+    console.error("[db] findServers error:", (err as Error).message);
+    return [];
+  }
 }
 
 /** นับผู้เล่นที่ออนไลน์ใน server (PlayerSession.lastPing ภายใน windowSeconds วินาที) */
 export async function countOnlinePlayers(serverId: string, windowSeconds = 120): Promise<number> {
-  const { rows } = await pool.query<{ c: string }>(
-    `SELECT COUNT(*)::int AS c FROM "PlayerSession"
-     WHERE "serverId" = $1 AND "lastPing" > NOW() - ($2 || ' seconds')::interval`,
-    [serverId, String(windowSeconds)]
-  );
-  return Number(rows[0]?.c ?? 0);
+  if (!pool) return 0;
+  try {
+    const { rows } = await pool.query<{ c: string }>(
+      `SELECT COUNT(*)::int AS c FROM "PlayerSession"
+       WHERE "serverId" = $1 AND "lastPing" > NOW() - ($2 || ' seconds')::interval`,
+      [serverId, String(windowSeconds)]
+    );
+    return Number(rows[0]?.c ?? 0);
+  } catch (err) {
+    console.error("[db] countOnlinePlayers error:", (err as Error).message);
+    return 0;
+  }
 }
 
 /** นับผู้เล่นออนไลน์ของทุก server ในครั้งเดียว (ใช้ใน dashboard) → Map<serverId, count> */
 export async function getOnlineCountsByServer(windowSeconds = 120): Promise<Map<string, number>> {
-  const { rows } = await pool.query<{ serverId: string; c: number }>(
-    `SELECT "serverId", COUNT(*)::int AS c FROM "PlayerSession"
-     WHERE "serverId" IS NOT NULL AND "lastPing" > NOW() - ($1 || ' seconds')::interval
-     GROUP BY "serverId"`,
-    [String(windowSeconds)]
-  );
-  return new Map(rows.map((r) => [r.serverId, Number(r.c)]));
+  if (!pool) return new Map();
+  try {
+    const { rows } = await pool.query<{ serverId: string; c: number }>(
+      `SELECT "serverId", COUNT(*)::int AS c FROM "PlayerSession"
+       WHERE "serverId" IS NOT NULL AND "lastPing" > NOW() - ($1 || ' seconds')::interval
+       GROUP BY "serverId"`,
+      [String(windowSeconds)]
+    );
+    return new Map(rows.map((r) => [r.serverId, Number(r.c)]));
+  } catch (err) {
+    console.error("[db] getOnlineCountsByServer error:", (err as Error).message);
+    return new Map();
+  }
 }
 
 /** อัปเดต server เป็น sponsored (เรียกตอนแอดมินกดอนุมัติ) — เลียนแบบ PATCH /admin/servers/:id */
@@ -80,6 +106,7 @@ export async function updateServerSponsor(
   serverId: string,
   opts: { note: string; expiresAt: Date }
 ): Promise<void> {
+  if (!pool) throw new Error("Database is not connected");
   await pool.query(
     `UPDATE "Server"
      SET "isSponsored" = true,
@@ -92,6 +119,7 @@ export async function updateServerSponsor(
 }
 
 export async function pingDb(): Promise<boolean> {
+  if (!pool) return false;
   try {
     await pool.query("SELECT 1");
     return true;
@@ -102,6 +130,7 @@ export async function pingDb(): Promise<boolean> {
 
 /** นับผู้เล่นที่กำลังออนไลน์รวมทุกเซิร์ฟเวอร์ (PlayerSession.lastPing ภายใน windowSeconds วินาที) */
 export async function getTotalOnlinePlayers(windowSeconds = 120): Promise<number> {
+  if (!pool) return 0;
   try {
     const { rows } = await pool.query<{ c: string }>(
       `SELECT COUNT(*)::int AS c FROM "PlayerSession"
@@ -117,6 +146,7 @@ export async function getTotalOnlinePlayers(windowSeconds = 120): Promise<number
 
 /** นับสกินทั้งหมดในระบบ */
 export async function getTotalSkins(): Promise<number> {
+  if (!pool) return 0;
   try {
     const { rows } = await pool.query<{ c: string }>(`SELECT COUNT(*)::int AS c FROM "Skin"`);
     return Number(rows[0]?.c ?? 0);
