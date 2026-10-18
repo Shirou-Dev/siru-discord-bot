@@ -59,18 +59,25 @@ interface SkinStats {
   totalSkins: number;
 }
 
-async function fetchJson<T>(url: string): Promise<T | null> {
+async function fetchJson<T>(url: string, timeoutMs = 8000): Promise<T | null> {
   try {
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 5000);
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     const res = await fetch(url, {
       signal: ctrl.signal,
-      headers: { "User-Agent": "SIRU-SKIN-Bot", Accept: "application/json" },
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) SIRU-Bot/1.0",
+        Accept: "application/json",
+      },
     });
     clearTimeout(timer);
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn(`[fetchJson] ${url} returned HTTP ${res.status}`);
+      return null;
+    }
     return (await res.json()) as T;
-  } catch {
+  } catch (err) {
+    console.warn(`[fetchJson] ${url} failed: ${(err as Error).message}`);
     return null;
   }
 }
@@ -406,10 +413,20 @@ export async function getClusterNodesStatus(): Promise<{
   node2: NodeProbeResult;
   lastSync: SyncInfo | null;
 }> {
-  const pingNodeHttp = async (url: string) => {
-    const start = Date.now();
-    const data = await fetchJson<FiguraHealth>(url);
-    return { online: data !== null, pingMs: Date.now() - start, data };
+  const pingNodeHttp = async (url: string, maxRetries = 2) => {
+    let lastData: FiguraHealth | null = null;
+    let start = Date.now();
+    for (let i = 0; i <= maxRetries; i++) {
+      start = Date.now();
+      lastData = await fetchJson<FiguraHealth>(url);
+      if (lastData !== null) {
+        return { online: true, pingMs: Date.now() - start, data: lastData };
+      }
+      if (i < maxRetries) {
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+    }
+    return { online: false, pingMs: Date.now() - start, data: null };
   };
 
   const probeNode1 = async (): Promise<NodeProbeResult> => {
