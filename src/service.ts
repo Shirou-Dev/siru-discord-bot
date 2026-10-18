@@ -421,7 +421,21 @@ export async function getClusterNodesStatus(): Promise<{
       start = Date.now();
       lastData = await fetchJson<FiguraHealth>(url);
       if (lastData !== null) {
-        return { online: true, pingMs: Date.now() - start, data: lastData };
+        const firstPing = Date.now() - start;
+        // Warm probe sample: if this was a cold connection (DNS + TLS handshake overhead),
+        // do a quick second ping over the now-warm connection to measure true network latency
+        let bestPing = firstPing;
+        try {
+          const warmStart = Date.now();
+          const secondData = await fetchJson<FiguraHealth>(url, 3000);
+          if (secondData !== null) {
+            const secondPing = Date.now() - warmStart;
+            bestPing = Math.min(firstPing, secondPing);
+            lastData = secondData;
+          }
+        } catch { }
+
+        return { online: true, pingMs: bestPing, data: lastData };
       }
       if (i < maxRetries) {
         await new Promise((r) => setTimeout(r, 1000));
