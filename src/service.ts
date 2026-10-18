@@ -281,6 +281,8 @@ export interface FiguraHealth {
   node_name: string;
   node_region: string;
   version: string;
+  uptime?: number;
+  system_uptime?: number;
 }
 type Motd = { text: string }[];
 
@@ -449,18 +451,20 @@ export async function getClusterNodesStatus(): Promise<{
   };
 
   const probeNode1 = async (): Promise<NodeProbeResult> => {
-    const [res, uptime] = await Promise.all([
+    const [res, motdUptime] = await Promise.all([
       pingNodeHttp(config.figura.node1HealthUrl),
       fetchNode1Uptime(),
     ]);
+    const uptime = res.data?.system_uptime ? fmtUptime(res.data.system_uptime) : motdUptime;
     return { ...res, uptime };
   };
 
   const probeNode2 = async (): Promise<NodeProbeResult> => {
-    const [httpRes, uptime] = await Promise.all([
+    const [httpRes, motdUptime] = await Promise.all([
       pingNodeHttp(config.figura.node2HealthUrl),
       fetchNode2Uptime(),
     ]);
+    const uptime = httpRes.data?.system_uptime ? fmtUptime(httpRes.data.system_uptime) : motdUptime;
     if (httpRes.online) return { ...httpRes, uptime };
 
     // Fallback SSH probe
@@ -472,7 +476,8 @@ export async function getClusterNodesStatus(): Promise<{
       );
       const data = JSON.parse(stdout.trim()) as FiguraHealth;
       if (data && data.status === "ok") {
-        return { online: true, pingMs: Date.now() - start, uptime, data };
+        const sshUptime = data.system_uptime ? fmtUptime(data.system_uptime) : uptime;
+        return { online: true, pingMs: Date.now() - start, uptime: sshUptime, data };
       }
     } catch { }
 
