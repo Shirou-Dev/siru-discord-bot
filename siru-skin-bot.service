@@ -1,0 +1,27 @@
+# systemd unit — ทางเลือกแทน pm2 (รัน 24/7 + auto-restart + ขึ้นตอน boot)
+#
+# ติดตั้ง:
+#   1. แก้ <USER> และ <PATH> ด้านล่างให้ตรงกับ VPS
+#   2. sudo cp siru-skin-bot.service /etc/systemd/system/
+#   3. sudo systemctl daemon-reload
+#   4. sudo systemctl enable --now siru-skin-bot
+#   5. journalctl -u siru-skin-bot -f   (ดู log)
+#
+# หา path ของ node: `which node`  (เช่น /root/.nvm/versions/node/v20.x/bin/node)
+
+[Unit]
+Description=SIRU-SKIN Discord Bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=<USER>
+WorkingDirectory=<PATH>/siru-skin-discord-bot
+ExecStart=/usr/bin/node --import tsx src/index.ts
+Restart=always
+RestartSec=5
+# โหลด .env ผ่าน dotenv ในโค้ดอยู่แล้ว (อยู่ใน WorkingDirectory)
+
+[Install]
+WantedBy=multi-user.target

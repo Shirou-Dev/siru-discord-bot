@@ -1,0 +1,13 @@
+# fly.toml app configuration file generated for siru-discord-bot on 2026-10-18T00:46:39+07:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'siru-discord-bot'
+primary_region = 'sin'
+
+[build]
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '256mb'
