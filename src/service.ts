@@ -68,6 +68,7 @@ async function fetchJson<T>(url: string, timeoutMs = 8000): Promise<T | null> {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) SIRU-Bot/1.0",
         Accept: "application/json",
+        Connection: "keep-alive",
       },
     });
     clearTimeout(timer);
