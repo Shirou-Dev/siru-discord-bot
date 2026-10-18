@@ -60,6 +60,7 @@ interface SkinStats {
 }
 
 async function fetchJson<T>(url: string, timeoutMs = 8000): Promise<T | null> {
+  if (!url) return null;
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -81,6 +82,23 @@ async function fetchJson<T>(url: string, timeoutMs = 8000): Promise<T | null> {
     console.warn(`[fetchJson] ${url} failed: ${(err as Error).message}`);
     return null;
   }
+}
+
+async function fetchJsonWithRetry<T>(
+  url: string,
+  timeoutMs = 6000,
+  maxRetries = 2,
+  delayMs = 1000
+): Promise<T | null> {
+  if (!url) return null;
+  for (let i = 0; i <= maxRetries; i++) {
+    const data = await fetchJson<T>(url, timeoutMs);
+    if (data !== null) return data;
+    if (i < maxRetries) {
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+  return null;
 }
 
 function ts(date: Date | string, fmt: "R" | "f" | "F" | "t" | "T" | "d" | "D" = "f"): string {
@@ -211,12 +229,12 @@ export async function renderServicePanel(client: Client): Promise<void> {
   if (!channel) return;
 
   const [health, pm2, incidents, onlinePlayers, totalSkins, clusterHealth] = await Promise.all([
-    fetchJson<Health>(config.service.healthUrl),
-    fetchJson<Pm2Proc[]>(config.service.pm2Url),
-    fetchJson<Incident[]>(config.service.incidentsUrl),
+    fetchJsonWithRetry<Health>(config.service.healthUrl, 6000, 2),
+    config.service.pm2Url ? fetchJson<Pm2Proc[]>(config.service.pm2Url) : Promise.resolve(null),
+    config.service.incidentsUrl ? fetchJson<Incident[]>(config.service.incidentsUrl) : Promise.resolve(null),
     getTotalOnlinePlayers(),
     getTotalSkins(),
-    fetchJson<FiguraHealth>(config.figura.healthUrl),
+    fetchJsonWithRetry<FiguraHealth>(config.figura.healthUrl, 6000, 2),
   ]);
 
   const activeOnline = Math.max(onlinePlayers, health?.onlineSockets ?? 0);
@@ -328,10 +346,10 @@ export async function renderFiguraPanel(client: Client): Promise<void> {
   if (!channel) return;
 
   const [stats, version, motd, health] = await Promise.all([
-    fetchJson<FiguraStats>(config.figura.statsUrl),
-    fetchJson<FiguraVersion>(config.figura.versionUrl),
-    fetchJson<Motd>(config.figura.motdUrl),
-    fetchJson<FiguraHealth>(config.figura.healthUrl),
+    fetchJsonWithRetry<FiguraStats>(config.figura.statsUrl, 6000, 2),
+    fetchJsonWithRetry<FiguraVersion>(config.figura.versionUrl, 6000, 2),
+    fetchJsonWithRetry<Motd>(config.figura.motdUrl, 6000, 2),
+    fetchJsonWithRetry<FiguraHealth>(config.figura.healthUrl, 6000, 2),
   ]);
 
   const container = buildFiguraContainer(stats, version, parseUptimeFromMotd(motd), health);

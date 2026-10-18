@@ -51,9 +51,9 @@ export const config = {
   service: {
     enabled: (process.env.SERVICE_PANEL_ENABLED ?? "true") !== "false",
     channelId: process.env.SERVICE_CHANNEL_ID || "",
-    healthUrl: process.env.SERVICE_HEALTH_URL || "http://localhost:3000/health",
-    pm2Url: process.env.SERVICE_PM2_URL || "http://localhost:3009/api/pm2",
-    incidentsUrl: process.env.SERVICE_INCIDENTS_URL || "http://localhost:3009/api/incidents",
+    healthUrl: process.env.SERVICE_HEALTH_URL || "https://siruskinapi.shirounetwork.com/health",
+    pm2Url: process.env.SERVICE_PM2_URL || "",
+    incidentsUrl: process.env.SERVICE_INCIDENTS_URL || "",
   },
   // Service status panel ของ SIRU-FiguraCloud (Rust + SQLite, port 3011)
   figura: {
